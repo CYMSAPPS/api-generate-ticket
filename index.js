@@ -1,7 +1,7 @@
 const express = require('express');
 const { createCanvas, loadImage } = require('canvas');
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 8080;
 
 async function generateImage(jsonData) {
     const bgImage = await loadImage(jsonData.backgroundImage);
