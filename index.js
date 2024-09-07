@@ -4,43 +4,65 @@ const app = express();
 const port = process.env.PORT || 8080;
 
 async function generateImage(jsonData) {
-    const bgImage = await loadImage(jsonData.backgroundImage);
+    try {
+        // Carregar a imagem de fundo primeiro
+        const bgImage = await loadImage(jsonData.backgroundImage);
 
-    const width = bgImage.width;
-    const height = bgImage.height;
+        // Definir o tamanho do canvas com base na imagem de fundo
+        const width = bgImage.width;
+        const height = bgImage.height;
 
-    const canvas = createCanvas(width, height);
-    const ctx = canvas.getContext('2d');
+        const canvas = createCanvas(width, height);
+        const ctx = canvas.getContext('2d');
 
-    // Limpar o canvas
-    ctx.clearRect(0, 0, width, height);
+        // Limpar o canvas
+        ctx.clearRect(0, 0, width, height);
 
-    // Desenhar a imagem de fundo
-    ctx.drawImage(bgImage, 0, 0, width, height);
+        // Desenhar a imagem de fundo
+        ctx.drawImage(bgImage, 0, 0, width, height);
 
-    // Desenhar o texto
-    if (jsonData.text) {
-        const text = jsonData.text;
-        ctx.font = `${text.fontSize} ${text.fontFamily}`;
-        ctx.fillStyle = text.color;
-        ctx.fillText(text.content, parseInt(text.position.left), parseInt(text.position.top));
+        // Desenhar o texto
+        if (jsonData.text) {
+            const text = jsonData.text;
+            ctx.font = `${text.fontSize} ${text.fontFamily}`;
+            ctx.fillStyle = text.color;
+            ctx.fillText(text.content, parseInt(text.position.left), parseInt(text.position.top));
+        }
+
+        // Desenhar a imagem de perfil
+        if (jsonData.profileImage) {
+            const profileImage = await loadImage(jsonData.profileImage.src);
+            ctx.drawImage(profileImage, parseInt(jsonData.profileImage.position.left), parseInt(jsonData.profileImage.position.top), 100, 100);
+        }
+
+        // Converter para Buffer de imagem
+        const buffer = canvas.toBuffer('image/png');
+        return buffer;
+    } catch (error) {
+        throw new Error(`Erro ao gerar a imagem: ${error.message}`);
     }
-
-    // Desenhar a imagem de perfil
-    if (jsonData.profileImage) {
-        const profileImage = await loadImage(jsonData.profileImage.src);
-        ctx.drawImage(profileImage, parseInt(jsonData.profileImage.position.left), parseInt(jsonData.profileImage.position.top), 100, 100);
-    }
-
-    // Converter para Buffer de imagem
-    const buffer = canvas.toBuffer('image/png');
-    return buffer;
 }
 
 // Rota da API GET para gerar a imagem
 app.get('/generate-image', async (req, res) => {
     try {
-        const { backgroundImage, textContent, textColor, textFontSize, textFontFamily, textPositionTop, textPositionLeft, profileImageSrc, profileImagePositionTop, profileImagePositionLeft } = req.query;
+        const {
+            backgroundImage,
+            textContent,
+            textColor,
+            textFontSize,
+            textFontFamily,
+            textPositionTop,
+            textPositionLeft,
+            profileImageSrc,
+            profileImagePositionTop,
+            profileImagePositionLeft
+        } = req.query;
+
+        // Verifique se os parâmetros essenciais estão presentes
+        if (!backgroundImage) {
+            return res.status(400).json({ error: "O parâmetro 'backgroundImage' é obrigatório." });
+        }
 
         // Criar o JSON com base nos parâmetros da URL
         const jsonData = {
@@ -64,12 +86,14 @@ app.get('/generate-image', async (req, res) => {
             }
         };
 
+        // Gerar a imagem
         const buffer = await generateImage(jsonData);
 
         // Definir o tipo de resposta como imagem PNG
         res.setHeader('Content-Type', 'image/png');
         res.send(buffer);
     } catch (err) {
+        console.error(`Erro ao processar a requisição: ${err.message}`);
         res.status(500).json({ error: err.message });
     }
 });
