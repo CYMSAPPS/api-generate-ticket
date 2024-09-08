@@ -24,13 +24,14 @@ async function generateImage(jsonData) {
         const bgImage = await loadImage(jsonData.backgroundImage);
         ctx.drawImage(bgImage, 0, 0, width, height);
 
-        // Desenhar o texto dinâmico
+        // Desenhar o nome do usuário centralizado
         if (jsonData.text) {
             const text = jsonData.text;
             ctx.font = `${text.fontSize} '${text.fontFamily}'`;
             ctx.fillStyle = text.color;
+            ctx.textAlign = 'center'; // Centraliza o texto
             ctx.textBaseline = 'top';
-            ctx.fillText(text.content, 82, 461); // Posição fixada de acordo com o template
+            ctx.fillText(text.content, width / 2, 461); // Centraliza o texto na largura da imagem
         }
 
         // Desenhar a imagem de perfil com corte circular
@@ -101,4 +102,5 @@ app.get('/generate-image', async (req, res) => {
 app.listen(port, () => {
     console.log(`Servidor rodando em http://localhost:${port}`);
 });
+
 
