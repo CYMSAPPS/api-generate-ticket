@@ -13,35 +13,51 @@ async function generateImage(jsonData) {
     try {
         const bgImage = await loadImage(jsonData.backgroundImage);
 
-    const width = bgImage.width;
-    const height = bgImage.height;
+        // Dimensões da imagem de fundo
+        const width = bgImage.width;
+        const height = bgImage.height;
 
-    const canvas = createCanvas(width, height);
-    const ctx = canvas.getContext('2d');
+        const canvas = createCanvas(width, height);
+        const ctx = canvas.getContext('2d');
 
-    // Limpar o canvas
-    ctx.clearRect(0, 0, width, height);
+        // Limpar o canvas
+        ctx.clearRect(0, 0, width, height);
 
-    // Desenhar a imagem de fundo
-    ctx.drawImage(bgImage, 0, 0, width, height);
+        // Desenhar a imagem de fundo
+        ctx.drawImage(bgImage, 0, 0, width, height);
 
-    // Desenhar o texto
-    if (jsonData.text) {
-        const text = jsonData.text;
-        ctx.font = `${text.fontSize} '${text.fontFamily}'`; // Usa a fonte dinâmica
-        ctx.fillStyle = text.color;
-        ctx.fillText(text.content, parseInt(text.position.left), parseInt(text.position.top));
-    }
+        // Desenhar o texto
+        if (jsonData.text) {
+            const text = jsonData.text;
+            ctx.font = `${text.fontSize} '${text.fontFamily}'`; // Usa a fonte dinâmica
+            ctx.fillStyle = text.color;
+            ctx.textBaseline = 'top'; // Para que o posicionamento do texto seja mais previsível
+            ctx.fillText(text.content, parseInt(text.position.left), parseInt(text.position.top));
+        }
 
-    // Desenhar a imagem de perfil
-    if (jsonData.profileImage) {
-        const profileImage = await loadImage(jsonData.profileImage.src);
-        ctx.drawImage(profileImage, parseInt(jsonData.profileImage.position.left), parseInt(jsonData.profileImage.position.top), 100, 100);
-    }
+        // Desenhar a imagem de perfil
+        if (jsonData.profileImage) {
+            const profileImage = await loadImage(jsonData.profileImage.src);
+            const profileX = parseInt(jsonData.profileImage.position.left);
+            const profileY = parseInt(jsonData.profileImage.position.top);
+            const profileWidth = parseInt(jsonData.profileImage.size.width);
+            const profileHeight = parseInt(jsonData.profileImage.size.height);
 
-    // Converter para Buffer de imagem
-    const buffer = canvas.toBuffer('image/png');
-    return buffer;
+            // Cortar a imagem como círculo
+            ctx.save(); // Salva o estado do canvas
+            ctx.beginPath();
+            ctx.arc(profileX + profileWidth / 2, profileY + profileHeight / 2, profileWidth / 2, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.clip(); // Define a área de corte circular
+
+            // Desenha a imagem dentro do círculo
+            ctx.drawImage(profileImage, profileX, profileY, profileWidth, profileHeight);
+            ctx.restore(); // Restaura o estado do canvas, permitindo o desenho fora da área de corte
+        }
+
+        // Converter para Buffer de imagem
+        const buffer = canvas.toBuffer('image/png');
+        return buffer;
     } catch (error) {
         throw new Error(`Erro ao gerar a imagem: ${error.message}`);
     }
@@ -60,7 +76,9 @@ app.get('/generate-image', async (req, res) => {
             textPositionLeft,
             profileImageSrc,
             profileImagePositionTop,
-            profileImagePositionLeft
+            profileImagePositionLeft,
+            profileImageWidth,
+            profileImageHeight
         } = req.query;
 
         // Verifique se os parâmetros essenciais estão presentes
@@ -86,6 +104,10 @@ app.get('/generate-image', async (req, res) => {
                 position: {
                     top: profileImagePositionTop || "200px",
                     left: profileImagePositionLeft || "300px"
+                },
+                size: {
+                    width: profileImageWidth || "100",
+                    height: profileImageHeight || "100"
                 }
             }
         };
@@ -105,3 +127,4 @@ app.get('/generate-image', async (req, res) => {
 app.listen(port, () => {
     console.log(`Servidor rodando em http://localhost:${port}`);
 });
+
