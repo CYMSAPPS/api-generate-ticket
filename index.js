@@ -1,5 +1,5 @@
 const express = require('express');
-const { createCanvas, loadImage, registerFont, Image } = require('canvas');
+const { createCanvas, loadImage, registerFont } = require('canvas');
 const app = express();
 const port = process.env.PORT || 8080;
 
@@ -23,28 +23,30 @@ async function generateImage(jsonData) {
         // Limpar o canvas
         ctx.clearRect(0, 0, width, height);
 
-        // Desenhar a imagem de fundo a partir do base64
-        const bgImage = new Image();
-        bgImage.src = jsonData.backgroundImage;
-        ctx.drawImage(bgImage, 0, 0, width, height);
+        // Verificar se a imagem de fundo está presente e válida
+        if (jsonData.backgroundImage) {
+            const bgImage = await loadImage(jsonData.backgroundImage);
+            ctx.drawImage(bgImage, 0, 0, width, height);
+        } else {
+            throw new Error('Background image is missing or invalid');
+        }
 
         // Desenhar o nome do usuário centralizado
         if (jsonData.text) {
             const text = jsonData.text;
             ctx.font = `${text.fontSize} '${text.fontFamily}'`;
-            ctx.fillStyle = text.color;
+            ctx.fillStyle = text.color || '#000000'; // Cor padrão caso não seja definida
             ctx.textAlign = 'center'; // Centraliza o texto
             ctx.textBaseline = 'top';
             ctx.fillText(text.content, width / 2, 461); // Centraliza o texto na largura da imagem
         }
 
-        // Desenhar a imagem de perfil com corte circular
-        if (jsonData.profileImage) {
-            const profileImage = new Image();
-            profileImage.src = jsonData.profileImage.src;
-            const profileX = 86;
-            const profileY = 148;
-            const profileSize = 272; // Tamanho fixo de acordo com o template
+        // Verificar e desenhar a imagem de perfil com corte circular
+        if (jsonData.profileImage && jsonData.profileImage.src) {
+            const profileImage = await loadImage(jsonData.profileImage.src);
+            const profileX = parseInt(jsonData.profileImage.position.left, 10) || 86;
+            const profileY = parseInt(jsonData.profileImage.position.top, 10) || 148;
+            const profileSize = parseInt(jsonData.profileImage.position.width, 10) || 272; // Tamanho fixo ou fornecido
 
             // Cortar a imagem como círculo
             ctx.save();
@@ -56,6 +58,8 @@ async function generateImage(jsonData) {
             // Desenhar a imagem dentro do círculo
             ctx.drawImage(profileImage, profileX, profileY, profileSize, profileSize);
             ctx.restore();
+        } else {
+            console.log('Profile image is missing or invalid, skipping...');
         }
 
         // Converter para Buffer de imagem
@@ -75,13 +79,19 @@ app.post('/generate-image', async (req, res) => {
         const jsonData = {
             backgroundImage: backgroundImage,
             text: text || {
-                content: "Texto Dinâmico",
+                content: "Texto Dinamico",
                 fontSize: "40px",
                 fontFamily: "Arial",
                 color: "#000000"
             },
             profileImage: profileImage || {
-                src: "https://example.com/profile.png"
+                src: "https://example.com/profile.png",
+                position: {
+                    top: "148px",
+                    left: "86px",
+                    width: "272px",
+                    height: "272px"
+                }
             }
         };
 
@@ -100,5 +110,3 @@ app.post('/generate-image', async (req, res) => {
 app.listen(port, () => {
     console.log(`Servidor rodando em http://localhost:${port}`);
 });
-
-
