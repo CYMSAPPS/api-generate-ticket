@@ -1,7 +1,10 @@
 const express = require('express');
-const { createCanvas, loadImage, registerFont } = require('canvas');
+const { createCanvas, loadImage, registerFont, Image } = require('canvas');
 const app = express();
 const port = process.env.PORT || 8080;
+
+// Middleware para aceitar JSON no corpo da requisição
+app.use(express.json({ limit: '10mb' })); // Ajuste o limite conforme necessário
 
 // Registre as fontes com os caminhos relativos à pasta 'fonts'
 registerFont('./fonts/arial.ttf', { family: 'Arial' });
@@ -20,8 +23,9 @@ async function generateImage(jsonData) {
         // Limpar o canvas
         ctx.clearRect(0, 0, width, height);
 
-        // Desenhar a imagem de fundo
-        const bgImage = await loadImage(jsonData.backgroundImage);
+        // Desenhar a imagem de fundo a partir do base64
+        const bgImage = new Image();
+        bgImage.src = jsonData.backgroundImage;
         ctx.drawImage(bgImage, 0, 0, width, height);
 
         // Desenhar o nome do usuário centralizado
@@ -36,7 +40,8 @@ async function generateImage(jsonData) {
 
         // Desenhar a imagem de perfil com corte circular
         if (jsonData.profileImage) {
-            const profileImage = await loadImage(jsonData.profileImage.src);
+            const profileImage = new Image();
+            profileImage.src = jsonData.profileImage.src;
             const profileX = 86;
             const profileY = 148;
             const profileSize = 272; // Tamanho fixo de acordo com o template
@@ -61,29 +66,22 @@ async function generateImage(jsonData) {
     }
 }
 
-// Rota da API GET para gerar a imagem
-app.get('/generate-image', async (req, res) => {
+// Rota da API POST para gerar a imagem
+app.post('/generate-image', async (req, res) => {
     try {
-        const {
-            backgroundImage,
-            textContent,
-            textColor,
-            textFontSize,
-            textFontFamily,
-            profileImageSrc
-        } = req.query;
+        const { backgroundImage, text, profileImage } = req.body;
 
-        // Criar o JSON com base nos parâmetros da URL
+        // Criar o JSON com base nos dados do corpo da requisição
         const jsonData = {
             backgroundImage: backgroundImage,
-            text: {
-                content: textContent || "Texto Dinâmico",
-                fontSize: textFontSize || "40px",
-                fontFamily: textFontFamily || "Arial",
-                color: textColor || "#000000"
+            text: text || {
+                content: "Texto Dinâmico",
+                fontSize: "40px",
+                fontFamily: "Arial",
+                color: "#000000"
             },
-            profileImage: {
-                src: profileImageSrc || "https://example.com/profile.png"
+            profileImage: profileImage || {
+                src: "https://example.com/profile.png"
             }
         };
 
