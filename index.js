@@ -11,12 +11,9 @@ registerFont('./fonts/verdana.ttf', { family: 'Verdana' });
 
 async function generateImage(jsonData) {
     try {
-        const bgImage = await loadImage(jsonData.backgroundImage);
-
-        // Dimensões da imagem de fundo
-        const width = bgImage.width;
-        const height = bgImage.height;
-
+        // Defina o tamanho do canvas fixo de acordo com o template frontend
+        const width = 442.25;
+        const height = 753;
         const canvas = createCanvas(width, height);
         const ctx = canvas.getContext('2d');
 
@@ -24,35 +21,35 @@ async function generateImage(jsonData) {
         ctx.clearRect(0, 0, width, height);
 
         // Desenhar a imagem de fundo
+        const bgImage = await loadImage(jsonData.backgroundImage);
         ctx.drawImage(bgImage, 0, 0, width, height);
 
-        // Desenhar o texto
+        // Desenhar o texto dinâmico
         if (jsonData.text) {
             const text = jsonData.text;
-            ctx.font = `${text.fontSize} '${text.fontFamily}'`; // Usa a fonte dinâmica
+            ctx.font = `${text.fontSize} '${text.fontFamily}'`;
             ctx.fillStyle = text.color;
-            ctx.textBaseline = 'top'; // Para que o posicionamento do texto seja mais previsível
-            ctx.fillText(text.content, parseInt(text.position.left), parseInt(text.position.top));
+            ctx.textBaseline = 'top';
+            ctx.fillText(text.content, 82, 461); // Posição fixada de acordo com o template
         }
 
-        // Desenhar a imagem de perfil
+        // Desenhar a imagem de perfil com corte circular
         if (jsonData.profileImage) {
             const profileImage = await loadImage(jsonData.profileImage.src);
-            const profileX = parseInt(jsonData.profileImage.position.left);
-            const profileY = parseInt(jsonData.profileImage.position.top);
-            const profileWidth = parseInt(jsonData.profileImage.size.width);
-            const profileHeight = parseInt(jsonData.profileImage.size.height);
+            const profileX = 86;
+            const profileY = 148;
+            const profileSize = 272; // Tamanho fixo de acordo com o template
 
             // Cortar a imagem como círculo
-            ctx.save(); // Salva o estado do canvas
+            ctx.save();
             ctx.beginPath();
-            ctx.arc(profileX + profileWidth / 2, profileY + profileHeight / 2, profileWidth / 2, 0, Math.PI * 2);
+            ctx.arc(profileX + profileSize / 2, profileY + profileSize / 2, profileSize / 2, 0, Math.PI * 2);
             ctx.closePath();
-            ctx.clip(); // Define a área de corte circular
+            ctx.clip();
 
-            // Desenha a imagem dentro do círculo
-            ctx.drawImage(profileImage, profileX, profileY, profileWidth, profileHeight);
-            ctx.restore(); // Restaura o estado do canvas, permitindo o desenho fora da área de corte
+            // Desenhar a imagem dentro do círculo
+            ctx.drawImage(profileImage, profileX, profileY, profileSize, profileSize);
+            ctx.restore();
         }
 
         // Converter para Buffer de imagem
@@ -72,43 +69,20 @@ app.get('/generate-image', async (req, res) => {
             textColor,
             textFontSize,
             textFontFamily,
-            textPositionTop,
-            textPositionLeft,
-            profileImageSrc,
-            profileImagePositionTop,
-            profileImagePositionLeft,
-            profileImageWidth,
-            profileImageHeight
+            profileImageSrc
         } = req.query;
-
-        // Verifique se os parâmetros essenciais estão presentes
-        if (!backgroundImage) {
-            return res.status(400).json({ error: "O parâmetro 'backgroundImage' é obrigatório." });
-        }
 
         // Criar o JSON com base nos parâmetros da URL
         const jsonData = {
             backgroundImage: backgroundImage,
             text: {
                 content: textContent || "Texto Dinâmico",
-                fontSize: textFontSize || "24px",
+                fontSize: textFontSize || "40px",
                 fontFamily: textFontFamily || "Arial",
-                color: textColor || "#000000",
-                position: {
-                    top: textPositionTop || "100px",
-                    left: textPositionLeft || "50px"
-                }
+                color: textColor || "#000000"
             },
             profileImage: {
-                src: profileImageSrc || "https://example.com/profile.png",
-                position: {
-                    top: profileImagePositionTop || "200px",
-                    left: profileImagePositionLeft || "300px"
-                },
-                size: {
-                    width: profileImageWidth || "100",
-                    height: profileImageHeight || "100"
-                }
+                src: profileImageSrc || "https://example.com/profile.png"
             }
         };
 
